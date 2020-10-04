@@ -6,7 +6,7 @@ steps:
       - '--builder=gcr.io/buildpacks/builder:v1'
       - '--path=.'
     id: Buildpack
-    entrypoint: pack
+    entrypoint: 'gunicorn -p :8080 main:app'
   - name: gcr.io/cloud-builders/docker
     args:
       - push
@@ -25,7 +25,7 @@ steps:
       - '--region=$_DEPLOY_REGION'
       - '--quiet'
     id: Deploy
-    entrypoint: '$_GOOGLE_ENTRYPOINT'
+    entrypoint: gcloud
 images:
   - '$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
 options:
