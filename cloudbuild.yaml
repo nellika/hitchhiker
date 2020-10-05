@@ -3,10 +3,10 @@ steps:
     args:
       - build
       - '$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
-      - '--builder=gcr.io/buildpacks/builder:v1'
+      - '--builder=gcr.io/gae-runtimes/buildpacks/python38/builder:python38_20200816_3_8_5_RC01'
       - '--path=.'
     id: Buildpack
-    entrypoint: 'gunicorn -p :8080 main:app'
+    entrypoint: python3 -m pip show gunicorn
   - name: gcr.io/cloud-builders/docker
     args:
       - push

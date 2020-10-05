@@ -1,4 +1,5 @@
 runtime: python38
+entrypoint: python3 -m pip show gunicorn
 
 handlers:
   # This configures Google App Engine to serve the files in the app's static
