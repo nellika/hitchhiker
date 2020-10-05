@@ -1,4 +1,5 @@
 steps:
-- name: 'eu.gcr.io/gae-runtimes/buildpacks/python38/builder:python38_20200816_3_8_5_RC01'
-  entrypoint: 'python3'
-  args: ['-m pip show gunicorn']
+- name: "gcr.io/cloud-builders/gcloud"
+  args: ["app", "deploy"]
+timeout: "1600s"
+
