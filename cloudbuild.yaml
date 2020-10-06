@@ -1,5 +1,17 @@
+
+steps:
+- name: 'python'
+  args: ['pip3','install', '-r', 'requirements.txt', '--user']
+# This installs your requirements and `--user` makes them persist between steps
+
 steps:
 - name: "gcr.io/cloud-builders/gcloud"
   args: ["app", "deploy"]
 timeout: "1600s"
+
+# Option B: Write some python that iterates and deploys each function, although I can't seem to find the Cloud Functions in the python SDK SPI.
+- name: 'python'
+  args: ['python3','deploy.py']
+  env:
+  - 'PROJECT_ID=$PROJECT_ID'
 
