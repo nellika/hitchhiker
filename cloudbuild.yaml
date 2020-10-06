@@ -1,10 +1,8 @@
-steps:
-- name: 'gcr.io/$PROJECT_ID/p2p-cloudbuild' 
-  entrypoint: '/bin/bash'
-  args: ['-c','virtualenv /workspace/venv' ]
-  # Create a Python virtualenv stored in /workspace/venv that will persist across container runs.
 
-- name: 'gcr.io/$PROJECT_ID/p2p-cloudbuild' 
-  entrypoint: 'venv/bin/pip'
-  args: ['install', '-V', '-r', 'requirements.txt']
-  # Installs any dependencies listed in the project's requirements.txt.
+steps:
+- name: 'python'
+  args: ['pip3','install', '-r', 'requirements.txt', '--user']
+
+- name: "gcr.io/cloud-builders/gcloud"
+  args: ["app", "deploy"]
+  timeout: "1600s"
