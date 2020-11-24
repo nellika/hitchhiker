@@ -1,18 +1,126 @@
 <!doctype html>
 <html>
 <head>
-  <title>Datastore and Firebase Auth Example</title>
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The hitchhiker's quotes in the Galaxy</title>
   <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Exo:wght@200;300;400&display=swap" rel="stylesheet"> 
+  <script src="{{ url_for('static', filename='vue.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='story_teller.js') }}"></script>
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='img/site.webmanifest') }}">
 </head>
 <body>
+  <section id="quote-container">
+    <h1>Far out in the uncharted backwaters of the unfashionable end of the western spiral arm of the Galaxy&#8230;</h1>
+    <template v-for="(quote, index) in quotes">
+      <article class="quote">
+          <img class="decoration" src="{{ url_for('static', filename='img/winter/003-snowflake.svg') }}" alt="Snowflake decoration">
+          <span class="page_number" v-html="quote.page_nr"></span>
+          <p class="quote-text" v-html="quote.text"></p>
+          <transition-group class="comments" name="list" tag="ul">
+            <li class="comment list-item" v-bind:key="index" v-for='(comment, index) in quote.comments' v-html="comment.text"></li>
+          </transition-group>
+          <div class="new-comment">
+              <textarea name="comment-text" cols="30" rows="2"></textarea>
+              <input class="ford-prefect" type="text" placeholder="Inconspicuous name">
+              <button v-bind:id="quote.quote_key" class="send-thought" @click="sendThought">( &#10003; ) send!</button>
+              <button class="cancel-thought" @click="commentModeOff">( &#10007; ) forget it!</button>
+          </div>
+          <button class="add-thought" @click="commentModeOn" >+ add thoughts</button>
+      </article>
+      <h2 v-html="narrative[index]"></h2>
+    </template>
+  </section>
+  <div id="galaxy">
+      <span class="orbit out"></span>
+      <span class="orbit mid"></span>
+      <span class="orbit in"></span>
+  </div>
+  <script>
+    const app = new Vue({
+        el: '#quote-container',
+        data: {
+            quotes: [],
+            commentClass:'comment-mode',
+            secret: 'SSBsaWtlIHlvdXIgY3VyaW91c2l0eSA7KSBFeHRyYSBxdW90ZSBmb3IgeW91OgoKQ3VyaW91c2x5IGVub3VnaCwgdGhvdWdoIGhlIGRpZG4ndCBrbm93IGl0LCBoZSB3YXMgYWxzbyBhIGRpcmVjdCBtYWxlLWxpbmUgZGVzY2VuZGFudCBvZiBHZW5naGlzIEtoYW4sIHRob3VnaCBpbnRlcnZlbmluZyBnZW5lcmF0aW9ucyBhbmQgcmFjaWFsIG1peGluZyBoYWQgc28ganVnZ2xlZCBoaXMgZ2VuZXMgdGhhdCBoZSBoYWQgbm8gZGlzY2VybmlibGUgTW9uZ29sb2lkIGNoYXJhY3RlcmlzdGljcywgYW5kIHRoZSBvbmx5IHZlc3RpZ2VzIGxlZnQgaW4gTXIuIEwgUHJvc3NlciBvZiBoaXMgbWlnaHR5IGFuY2VzdHJ5IHdlcmUgYSBwcm9ub3VuY2VkIHN0b3V0bmVzcyBhYm91dCB0aGUgdHVtIGFuZCBhIHByZWRpbGVjdGlvbiBmb3IgbGl0dGxlIGZ1ciBoYXRzLg==',
+            narrative: narrative
+        },
+        created(){
+            fetch('/api/quotes')
+                .then(response => response.json())
+                .then(json => {
+                    this.quotes = json["quotes"];
+                })
+            console.info(atob(this.secret));
+        },
+        methods: {
+            commentModeOn: function(e){
+                let container = e.target.parentNode;
+                container.classList.toggle(this.commentClass);
+                container.getElementsByTagName("textarea")[0].focus();
+            },
+            commentModeOff: function(e){
+                let container = e.target.parentNode.parentNode;
+                container.classList.toggle(this.commentClass); 
+            },
+            sendThought: function(e){
+                let quote_id=e.target.id;
+                let txt_area=e.target.parentNode.getElementsByTagName("textarea")[0];
+                let user_input=e.target.parentNode.getElementsByClassName("ford-prefect")[0];
+                let comment_container = e.target.parentNode.parentNode;
+                let cClass = this.commentClass;
 
-  <h1>Datastore and Firebase Auth Example</h1>
-  <!-- [START gae_python38_datastore_print_times] -->
-  <h2>Last 10 visits</h2>
-  {% for time in times %}
-    <p>{{ time['timestamp'] }}</p>
-  {% endfor %}
-  <!-- [END gae_python38_datastore_print_times] -->
+                let message=txt_area.value;
+
+                if(message.length < 3){
+                    window.location = '/error/not-enough';
+                }else if(message.length > 3000){
+                    window.location = '/error/too-much';
+                }else{
+                    let user=user_input.value;
+
+                    let curr_quote = this.quotes.find(q => q.quote_key == quote_id);
+                    
+                    if(curr_quote['comments'] == undefined){
+                        curr_quote.comments = []
+                    }
+
+                    let tempComments = [...curr_quote.comments]
+                    tempComments.push({"created_at":"","created_by":user,"text":message})
+
+                    var xhr = new XMLHttpRequest();
+
+                    xhr.onload = function(e) {
+                        if (xhr.status == 200){
+                            if(xhr.responseText == 'comment'){
+                                curr_quote.comments = [...tempComments]
+                            }
+                            comment_container.classList.toggle(cClass); 
+                            txt_area.value="";
+                            user_input.value="";
+                        }else if(xhr.status == 403){
+                            alert(xhr.responseText);
+                        }else{
+                            alert(xhr.responseText);
+                        }
+                    }
+
+                    xhr.open("POST", `/api/sendThought/${quote_id}`, true);
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    xhr.send(JSON.stringify({
+                        thoughts: tempComments,
+                        user: user
+                    }));
+
+                }
+            }
+        }
+    })
+  </script>
 </body>
 </html>

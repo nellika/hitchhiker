@@ -1,71 +1,117 @@
-# Copyright 2018 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import datetime
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify
+import json
 
-# [START gae_python38_datastore_store_and_fetch_times]
+app = Flask(__name__)
+
 from google.cloud import datastore
 
 datastore_client = datastore.Client()
 
-# [END gae_python38_datastore_store_and_fetch_times]
-app = Flask(__name__)
-
-
-# [START gae_python38_datastore_store_and_fetch_times]
-def store_time(dt):
-    entity = datastore.Entity(key=datastore_client.key('visit'))
+def store_message(text, quote):
+    entity = datastore.Entity(key=datastore_client.key('quote', quote , 'message'))
+    created_at = datetime.datetime.now()
     entity.update({
-        'timestamp': dt
+        'text': text,
+        'created_at': created_at
     })
 
     datastore_client.put(entity)
 
+def store_comment(comments, quote):
+    key = datastore_client.key('quote', str(quote))
+    quote = datastore_client.get(key)
 
-def fetch_times(limit):
-    query = datastore_client.query(kind='visit')
-    query.order = ['-timestamp']
+    for prop in quote:
+        quote[prop] = quote[prop]
 
-    times = query.fetch(limit=limit)
+    quote['comments'] = comments
+    datastore_client.put(quote)
 
-    return times
-# [END gae_python38_datastore_store_and_fetch_times]
+# def store_quote(text, page):
+#     created_at = datetime.datetime.now()
+#     q_id = created_at.strftime("%Y%m%d%H%M%S")
+#     key = datastore_client.key('quote', str(q_id))
+#     entity = datastore.Entity(key)
+    
+#     entity.update({
+#         'text': text,
+#         'novel': "The Hitchhiker's Guide to the Galaxy",
+#         'page_nr': page,
+#         'created_at': created_at,
+#         'created_by': 'admin',
+#         'quote_key': key,
+#         'comments': []
+#     })
+
+#     datastore_client.put(entity)
 
 
-# [START gae_python38_datastore_render_times]
+def fetch_quotes(limit):
+    query = datastore_client.query(kind='quote')
+    #query.order = ['+created_at']
+
+    quotes = query.fetch(limit=limit)
+
+    return quotes
+
 @app.route('/')
 def root():
-    # Store the current access time in Datastore.
-    store_time(datetime.datetime.now())
+    return render_template('index.html')
 
-    # Fetch the most recent 10 access times from Datastore.
-    times = fetch_times(10)
+@app.route('/error/<string:err_type>')
+def error(err_type):
+    if err_type == 'too-much':
+        text = 'More than 3000 characters? Looks like overkill...'
+    elif err_type == 'not-enough':
+        text = 'Less than three characters... meh.'
+    else:
+        text = 'Boiiiii... Not found. :('
+        err_type = 'not-found'
 
-    return render_template(
-        'index.html', times=times)
-# [END gae_python38_datastore_render_times]
+    img_path = "img/" + err_type
+    error = {"text":text, "img":img_path}
 
+    return render_template('error.html', error = error)
+
+@app.route('/api/quotes', methods=['GET'])
+def get_quotes():
+    d = datetime.datetime.now()
+    curr_month=int(d.strftime("%m"))
+    quotes = {"quotes": []}
+
+    if curr_month == 6:
+        daysInMonth = int(d.strftime("%d"))
+        q_iter = fetch_quotes(daysInMonth)
+
+        for q in q_iter:
+            full_key = q['quote_key'].__dict__
+            q['quote_key'] = full_key['_path'][0]['name']
+            quotes["quotes"].append(q)
+
+    return jsonify(quotes), 200
+
+@app.route('/api/sendThought/<int:quote_id>', methods=['POST'])
+def send_thoughts(quote_id):
+    thoughts = request.json['thoughts']
+    user = request.json['user']
+
+    if user == "zaphod":
+        created_at = datetime.datetime.now()
+        thoughts[len(thoughts)-1]['created_at'] = created_at
+        store_comment(thoughts, quote_id)
+        return 'comment', 200
+    elif user == "arthur":
+        created_at = datetime.datetime.now()
+        message = thoughts[len(thoughts)-1]['text']
+        store_message(message, quote_id)
+        return 'message', 200
+    else:
+        return 'Vogons are not welcomed on this ship.', 403
+
+
+    
 
 if __name__ == '__main__':
-    # This is used when running locally only. When deploying to Google App
-    # Engine, a webserver process such as Gunicorn will serve the app. This
-    # can be configured by adding an `entrypoint` to app.yaml.
-
-    # Flask's development server will automatically serve static files in
-    # the "static" directory. See:
-    # http://flask.pocoo.org/docs/1.0/quickstart/#static-files. Once deployed,
-    # App Engine itself will serve those files as configured in app.yaml.
-    app.run(host='127.0.0.1', port=8080, debug=True)
+    app.run(host='127.0.0.1', port=8081, debug=True)
