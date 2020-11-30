@@ -77,11 +77,11 @@ def error(err_type):
 
 @app.route('/api/quotes', methods=['GET'])
 def get_quotes():
-    d = datetime.datetime.now()
+    d = datetime.datetime.now() + datetime.timedelta(hours=1)
     curr_month=int(d.strftime("%m"))
     quotes = {"quotes": []}
 
-    if curr_month == 6:
+    if curr_month == 12:
         daysInMonth = int(d.strftime("%d"))
         q_iter = fetch_quotes(daysInMonth)
 
@@ -91,6 +91,12 @@ def get_quotes():
             quotes["quotes"].append(q)
 
     return jsonify(quotes), 200
+
+@app.route('/api/currtime', methods=['GET'])
+def get_server_time():
+    d = datetime.datetime.now() + datetime.timedelta(hours=1)
+    curr_time=d.strftime("%m/%d/%Y, %H:%M:%S")
+    return curr_time
 
 @app.route('/api/sendThought/<int:quote_id>', methods=['POST'])
 def send_thoughts(quote_id):
